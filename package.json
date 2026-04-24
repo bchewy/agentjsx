@@ -1,0 +1,128 @@
+{
+  "name": "effectctx",
+  "version": "0.1.0",
+  "private": true,
+  "description": "an effect based agent harness",
+  "license": "MIT",
+  "author": "Arjun Kumar",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smithery-ai/effectctx.git"
+  },
+  "homepage": "https://github.com/smithery-ai/effectctx",
+  "bugs": {
+    "url": "https://github.com/smithery-ai/effectctx/issues"
+  },
+  "keywords": [
+    "effect",
+    "agent",
+    "runtime",
+    "llm",
+    "ai-sdk",
+    "mcp"
+  ],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./agent": {
+      "types": "./src/agent.ts",
+      "default": "./src/agent.ts"
+    },
+    "./agent-ctx": {
+      "types": "./src/agent-ctx.ts",
+      "default": "./src/agent-ctx.ts"
+    },
+    "./compaction": {
+      "types": "./src/compaction.ts",
+      "default": "./src/compaction.ts"
+    },
+    "./define-tool": {
+      "types": "./src/define-tool.ts",
+      "default": "./src/define-tool.ts"
+    },
+    "./errors": {
+      "types": "./src/errors.ts",
+      "default": "./src/errors.ts"
+    },
+    "./event-log": {
+      "types": "./src/event-log.ts",
+      "default": "./src/event-log.ts"
+    },
+    "./extensions": {
+      "types": "./src/extensions/index.ts",
+      "default": "./src/extensions/index.ts"
+    },
+    "./extensions/*": {
+      "types": "./src/extensions/*.ts",
+      "default": "./src/extensions/*.ts"
+    },
+    "./hydration": {
+      "types": "./src/hydration.ts",
+      "default": "./src/hydration.ts"
+    },
+    "./inference": {
+      "types": "./src/inference.ts",
+      "default": "./src/inference.ts"
+    },
+    "./pending-sends": {
+      "types": "./src/pending-sends.ts",
+      "default": "./src/pending-sends.ts"
+    },
+    "./projections": {
+      "types": "./src/projections.ts",
+      "default": "./src/projections.ts"
+    },
+    "./providers": {
+      "types": "./src/providers/index.ts",
+      "default": "./src/providers/index.ts"
+    },
+    "./providers/*": {
+      "types": "./src/providers/*.ts",
+      "default": "./src/providers/*.ts"
+    },
+    "./render-adapter": {
+      "types": "./src/render-adapter.ts",
+      "default": "./src/render-adapter.ts"
+    },
+    "./tool-exec": {
+      "types": "./src/tool-exec.ts",
+      "default": "./src/tool-exec.ts"
+    },
+    "./types": {
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ai": "^6.0.162",
+    "effect": "^3.21.1"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "@types/node": "^22.19.17",
+    "fast-check": "^4.7.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4",
+    "zod": "^4.1.13"
+  }
+}

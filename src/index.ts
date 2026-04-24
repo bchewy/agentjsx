@@ -1,0 +1,110 @@
+// Standalone Effect-TS agent runtime package shared by the harness,
+// smithery bridge, and local callers.
+export {
+  createAgent,
+  createAgentRuntime,
+  type Agent,
+  type AgentOptions,
+  type AgentSnapshot,
+  type Extension,
+} from "./agent";
+export {
+  AgentCtx,
+  type AgentCtxService,
+  type AgentCtxOptions,
+  type AmbientProducer,
+  type Transform,
+  type TransformContext,
+  type AgentErrorEntry,
+  type ProjectionInputs,
+  type Renderer,
+} from "./agent-ctx";
+export { PendingSends, type PendingSendsService } from "./pending-sends";
+export { runInference } from "./inference";
+export { runToolExecution } from "./tool-exec";
+export {
+  isHalted,
+  lastResult,
+  pendingToolCallsFromLog,
+  renderHistoryFragments,
+  toolsInFlight,
+} from "./projections";
+export { makeEventLog, type EventLog, type EventInput } from "./event-log";
+export { reconcileHydrationDangling } from "./hydration";
+export {
+  DuplicateToolError,
+  InferenceError,
+  ToolExecutionError,
+  type AgentError,
+} from "./errors";
+export type {
+  Fragment,
+  FragmentMap,
+  CacheControl,
+  Event,
+  InferFn,
+  InferResponse,
+  ProviderOptions,
+  ProviderContext,
+  ProviderMessage,
+  ProviderContentChunk,
+  Tool,
+  ToolCall,
+  ToolContext,
+  ToolDefinition,
+} from "./types";
+export {
+  createAiGatewayInfer,
+  type AiGatewayOptions,
+  type AiGatewayUsage,
+} from "./providers";
+export { defineTool, type DefineToolOptions } from "./define-tool";
+export {
+  ambientCwd,
+  maxSteps,
+  clipMessages,
+  type ClipMessagesOptions,
+  snip,
+  type SnipOptions,
+  truncateTools,
+  type TruncateToolsOptions,
+  estimateTokensFromFragments,
+  fileSystem,
+  type FileInfo,
+  type FileStore,
+  type FileSystemOptions,
+  createInMemoryStore,
+  type InMemoryStoreOptions,
+  shell,
+  type Shell,
+  type ShellOptions,
+  type ExecResult,
+  workspace,
+  type Workspace,
+  type WorkspaceOptions,
+  summarize,
+  SUMMARIZATION_PROMPT,
+  type SummarizeOptions,
+  autoCompact,
+  type AutoCompactOptions,
+  recall,
+  type RecallOptions,
+  truncateToolOutputs,
+  type TruncateToolOutputsOptions,
+  webSearch,
+  type WebSearchOptions,
+  mcpServers,
+  type McpServerSpec,
+  type McpServersOptions,
+  skills,
+  type SkillEntry,
+  type SkillBackend,
+  type SkillsOptions,
+  subagents,
+  inProcessBackend,
+  type SubagentBackend,
+  type SubagentDef,
+  type SubagentSpawnOpts,
+  type SubagentTerminal,
+  type SubagentsOptions,
+} from "./extensions";
