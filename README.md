@@ -140,10 +140,6 @@ Two complete, runnable examples:
 - [API reference](docs/api.md): every export and type.
 - [Skill](docs/skill.md): condensed quickstart for models writing effectctx code.
 
-## Peer dependencies
-
-- `@modelcontextprotocol/sdk` (optional, for MCP extensions)
-
 ## License
 
-MIT © Arjun Kumar. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
