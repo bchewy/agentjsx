@@ -1,6 +1,8 @@
 # EffectCtx
 
-EffectCtx lets you build agent harnesses by composing steering extensions that shape what your model sees and does. It's inspired by React's rendering model: just as the DOM is rendered from state, an agent's context is *rendered* from an append-only event log.
+EffectCtx lets you build agent harnesses by composing steering extensions that shape what your model sees and does.
+
+Built on [Effect](https://effect.website), inspired by React: just as the DOM is rendered from state, an agent's context is *rendered* from an append-only event log.
 
 ## Install
 
