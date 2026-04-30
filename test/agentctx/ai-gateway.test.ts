@@ -62,4 +62,34 @@ describe("createAiGatewayInfer", () => {
     expect(body.providerOptions?.gateway?.only).toEqual(["google"]);
     expect(result.content).toBe("hello");
   });
+
+  // Pins the integration surface that lets cloud-claude-style
+  // callers capture provider metadata (e.g. Vercel's
+  // `providerMetadata.gateway.generationId` for deferred cost
+  // resolution) without vendoring the entire provider.
+  it("invokes onResponse after each generateText with the raw result", async () => {
+    const fetchSpy = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(mockGatewayResponseBody("ok")), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const seen: Array<{ text: string | undefined }> = [];
+    const infer = createAiGatewayInfer({
+      apiKey: API_KEY,
+      model: "anthropic/claude-haiku-4-5",
+      fetch: fetchSpy,
+      onResponse: (res) => {
+        seen.push({ text: res.text });
+      },
+    });
+    await infer({
+      system: "",
+      messages: [{ role: "user", content: "hi" }],
+      tools: [],
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.text).toBe("ok");
+  });
 });

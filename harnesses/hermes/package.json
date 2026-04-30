@@ -1,0 +1,20 @@
+{
+  "name": "effectctx-harness-hermes",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Hermes Agent (Nous Research), modeled in effectctx.",
+  "type": "module",
+  "scripts": {
+    "agent": "tsx index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "^3.21.1",
+    "effectctx": "file:../.."
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3"
+  }
+}
