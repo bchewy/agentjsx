@@ -33,6 +33,21 @@ export interface AiGatewayOptions {
   spend?: { usd: number };
   costPer1k?: { input: number; output: number };
   onUsage?: (usage: AiGatewayUsage) => void;
+  // Per-call hook fired after each `generateText` returns. Receives the
+  // raw AI SDK result so integrators can capture provider-side metadata
+  // that isn't surfaced through `onUsage` — e.g. Vercel's
+  // `providerMetadata.gateway.generationId`, required by the deferred
+  // `/v1/generation` cost-lookup endpoint.
+  //
+  // Why this exists: without an extension hook here, integrators that
+  // need such metadata vendor the entire provider — and historically
+  // that's where message-shape bugs creep in (cloud-claude shipped a
+  // converter that dropped `assistant.toolCalls` because the vendored
+  // copy missed a branch). Surface the data they need; keep the
+  // converter authoritative.
+  onResponse?: (
+    res: Awaited<ReturnType<typeof generateText>>,
+  ) => void | Promise<void>;
   retryOnEmpty?: { maxAttempts: number };
   fetch?: typeof fetch;
 }
@@ -50,6 +65,7 @@ export function createAiGatewayInfer(opts: AiGatewayOptions): InferFn {
     spend,
     costPer1k = DEFAULT_COST_PER_1K,
     onUsage,
+    onResponse,
     retryOnEmpty = { maxAttempts: 2 },
   } = opts;
   const maxAttempts = Math.max(1, retryOnEmpty.maxAttempts);
@@ -92,6 +108,9 @@ export function createAiGatewayInfer(opts: AiGatewayOptions): InferFn {
       }
       if (onUsage) {
         onUsage({ input: nonCachedInput, output: outTok, cacheRead, cacheWrite });
+      }
+      if (onResponse) {
+        await onResponse(res);
       }
 
       last = {
