@@ -1,3 +1,8 @@
+---
+name: writeup
+description: Voice for writeups. Lead with the conclusion, mechanism next, code samples last.
+---
+
 # Writeups
 
 Lead with the conclusion. Then the mechanism. Code samples last.

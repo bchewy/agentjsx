@@ -1,3 +1,8 @@
+---
+name: pull-request
+description: Safe PR creation. Open a draft early, iterate in public, title in the imperative.
+---
+
 # Pull request workflow
 
 Open a draft PR early; iterate in public. Title in imperative.

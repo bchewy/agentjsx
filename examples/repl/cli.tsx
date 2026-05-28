@@ -17,33 +17,17 @@
 // agentjsx public API stays Promise-based; we bridge with `Effect.promise`
 // / `Effect.tryPromise`.
 
-import { NodeContext, NodeRuntime } from "@effect/platform-node"
-import { createAgentRuntime, createAiGatewayInfer, render } from "@flamecast/agentjsx"
-import {
-	Agent,
-	Block,
-	Compact,
-	McpServer,
-	Messages,
-	Skills,
-	Todo,
-	Workspace,
-} from "@flamecast/agentjsx/components"
+import { NodeRuntime } from "@effect/platform-node"
 import { Console, Effect } from "effect"
-import path from "node:path"
 import { createInterface, type Interface as ReadlineInterface } from "node:readline/promises"
-import { fileURLToPath } from "node:url"
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const SKILLS_ROOT = path.resolve(__dirname, "./skills")
+import { createCodingAgent } from "./agent"
 
 const DIM = (s: string) => `\x1b[2m${s}\x1b[0m`
 const BLUE = (s: string) => `\x1b[34m${s}\x1b[0m`
 const GREEN = (s: string) => `\x1b[32m${s}\x1b[0m`
 const YELLOW = (s: string) => `\x1b[33m${s}\x1b[0m`
 
-type AgentRuntime = ReturnType<typeof createAgentRuntime>
+type AgentRuntime = ReturnType<typeof createCodingAgent>
 
 // Polling helper. Kept as a plain async function — converting the
 // event-drain loop into pure Effect would double its size for no real
@@ -96,30 +80,7 @@ const program = Effect.gen(function* () {
 		)
 	}
 
-	const agent: AgentRuntime = createAgentRuntime({
-		infer: createAiGatewayInfer({ apiKey, model: "anthropic/claude-sonnet-4-6" }),
-		platform: NodeContext.layer,
-		context: () =>
-			render(
-				<Agent>
-					<Block name="role">
-						You are a helpful coding assistant working in the current directory. Use
-						tools to inspect and modify files. Track multi-step work as todos. Look
-						up skills for guidance on conventions.
-					</Block>
-					<Workspace root="./" />
-					<Skills root={SKILLS_ROOT} />
-					<McpServer
-						name="deepwiki"
-						url="https://mcp.deepwiki.com/mcp"
-					/>
-					<Todo />
-					<Compact strategy="summary" threshold={4000}>
-						<Messages />
-					</Compact>
-				</Agent>,
-			),
-	})
+	const agent = createCodingAgent({ apiKey })
 
 	// Finalizers run when the scope closes — i.e. when NodeRuntime.runMain
 	// catches SIGINT/SIGTERM, when the program returns, or when it dies.
