@@ -39,6 +39,10 @@
       "types": "./src/agent-ctx.ts",
       "default": "./src/agent-ctx.ts"
     },
+    "./components": {
+      "types": "./src/jsx/index.ts",
+      "default": "./src/jsx/index.ts"
+    },
     "./compaction": {
       "types": "./src/compaction.ts",
       "default": "./src/compaction.ts"

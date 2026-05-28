@@ -2,13 +2,15 @@ import {
   Chunk,
   Effect,
   Equal,
+  Exit,
   PubSub,
-  type Scope,
+  Scope,
   Stream,
   SubscriptionRef,
 } from "effect";
 import { DuplicateToolError } from "./errors";
 import { makeEventLog, type EventLog } from "./event-log";
+import { _clearExternalContext, _setExternalContext } from "./jsx/render";
 import { renderHistoryFragments } from "./projections";
 import { adaptToProviderContext } from "./render-adapter";
 import type {
@@ -17,6 +19,7 @@ import type {
   Fragment,
   FragmentMap,
   ProviderContext,
+  Rendered,
   TextDelta,
   Tool,
 } from "./types";
@@ -96,6 +99,12 @@ export interface AgentCtxOptions {
   // function from inputs to Fragment[] works; `jsxContext` from
   // `@flamecast/harness/jsx` adapts a JSX builder into this shape.
   readonly renderer?: Renderer;
+  // JSX-driven context. When set, takes precedence over `renderer`: the
+  // render driver calls this each turn (with the current event log
+  // injected via the render() ambient context), takes the returned
+  // `Rendered`, reconciles its tool list against the previous render's
+  // tools (by name), and uses its fragments as the pre-transform stream.
+  readonly context?: () => Rendered;
 }
 
 export interface AgentCtxService {
@@ -175,6 +184,84 @@ export const make = (
     // Bumped by `invalidate`; merged into the render driver below.
     const invalidateRef = yield* SubscriptionRef.make(0);
     const renderer = opts.renderer;
+    const contextFn = opts.context;
+
+    // Per-tool sub-scopes for JSX context tool reconciliation. Keyed by
+    // tool name (not reference) — same name across renders = same tool,
+    // even if the function identity changed. New tools open a sub-scope
+    // and install via `ctx.addTool`; removed tools close their sub-scope
+    // so the addTool finalizer releases them; tools present in both
+    // renders are left alone.
+    const toolScopes = new Map<string, Scope.CloseableScope>();
+
+    const addTool = (tool: Tool): Effect.Effect<void, DuplicateToolError, Scope.Scope> =>
+      Effect.acquireRelease(
+        SubscriptionRef.modifyEffect(tools, (current) => {
+          const exists = Chunk.findFirst(current, (t) => t.name === tool.name);
+          if (exists._tag === "Some") {
+            return Effect.fail(new DuplicateToolError({ toolName: tool.name }));
+          }
+          return Effect.succeed([undefined as void, Chunk.append(current, tool)] as const);
+        }),
+        () =>
+          SubscriptionRef.update(tools, (current) =>
+            Chunk.filter(current, (t) => t !== tool),
+          ),
+      );
+
+    const reportError = (phase: string, err: unknown): Effect.Effect<void> =>
+      SubscriptionRef.update(errors, (current) =>
+        Chunk.append(current, { phase, error: err }),
+      );
+
+    // Reconcile JSX-context tools against the previous render's tools.
+    // Key by name only — same name = same tool, regardless of function
+    // identity. Newly named tools acquire a sub-scope and install via
+    // `addTool` extended into that sub-scope; removed names close their
+    // sub-scope (the `addTool` finalizer in that scope removes the tool
+    // from `ctx.tools`). DuplicateToolError (e.g. tool already registered
+    // via `extensions: [...]`) is reported to `ctx.errors` and the
+    // sub-scope is closed — the render fiber must not die on it.
+    const reconcileContextTools = (
+      next: ReadonlyArray<Tool>,
+    ): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        const nextByName = new Map<string, Tool>();
+        for (const t of next) nextByName.set(t.name, t);
+        // Remove dropped tools first so a same-name swap (uncommon but
+        // legal) doesn't trip the duplicate guard.
+        for (const [name, scope] of toolScopes) {
+          if (!nextByName.has(name)) {
+            yield* Scope.close(scope, Exit.void);
+            toolScopes.delete(name);
+          }
+        }
+        for (const [name, tool] of nextByName) {
+          if (toolScopes.has(name)) continue;
+          const subScope = yield* Scope.make();
+          const installed = yield* Effect.exit(
+            addTool(tool).pipe(Scope.extend(subScope)),
+          );
+          if (Exit.isFailure(installed)) {
+            yield* Scope.close(subScope, Exit.void);
+            yield* reportError("context", installed.cause);
+            continue;
+          }
+          toolScopes.set(name, subScope);
+        }
+      });
+
+    // Release every JSX-context tool sub-scope when the agent scope
+    // closes. Without this, agent disposal would orphan whatever
+    // sub-scopes the last render opened.
+    yield* Effect.addFinalizer(() =>
+      Effect.gen(function* () {
+        for (const scope of toolScopes.values()) {
+          yield* Scope.close(scope, Exit.void);
+        }
+        toolScopes.clear();
+      }),
+    );
 
     // Recompute the materialized ProviderContext from all four inputs.
     // Exposed on the service as `render` so consumers that need
@@ -221,11 +308,43 @@ export const make = (
       }
 
       // Default composition: ambient system prefix then event-projected
-      // history. Swap in a user-provided `renderer` and it takes
-      // full ownership of the shape; transforms still apply on top
-      // either way.
+      // history. Three branches in precedence order:
+      //   1. `contextFn` (JSX context): inject events into the render
+      //      ambient context, call the user's callback, take the
+      //      returned fragments verbatim, and reconcile the returned
+      //      tool list against the previous render's tools.
+      //   2. `renderer` (legacy hook): hand the composer ambient +
+      //      events; it owns the shape.
+      //   3. Default: ambient prefix + history projection.
       let fragments: Fragment[];
-      if (renderer) {
+      if (contextFn) {
+        const eventsArr = Chunk.toReadonlyArray(currentEvents);
+        // Bridge to JS: the JSX walker is a pure synchronous traversal,
+        // so we run it inside Effect.sync after seeding the ambient
+        // context. try/finally on the JS side guarantees the external
+        // context is cleared even if the user's callback throws — we
+        // catch the throw and surface it via reportError so the render
+        // fiber stays alive.
+        const renderedExit = yield* Effect.sync(() => {
+          _setExternalContext({ events: eventsArr });
+          try {
+            return { ok: true as const, value: contextFn() };
+          } catch (err) {
+            return { ok: false as const, error: err };
+          } finally {
+            _clearExternalContext();
+          }
+        });
+        let rendered: Rendered;
+        if (renderedExit.ok) {
+          rendered = renderedExit.value;
+        } else {
+          yield* reportError("context", renderedExit.error);
+          rendered = { fragments: [], tools: [] };
+        }
+        yield* reconcileContextTools(rendered.tools);
+        fragments = [...rendered.fragments];
+      } else if (renderer) {
         const eventsArr = Chunk.toReadonlyArray(currentEvents);
         fragments = [...renderer({ events: eventsArr, ambient: systemFragments })];
       } else {
@@ -274,21 +393,6 @@ export const make = (
 
     yield* Effect.forkScoped(Stream.runDrain(driver));
 
-    const addTool = (tool: Tool): Effect.Effect<void, DuplicateToolError, Scope.Scope> =>
-      Effect.acquireRelease(
-        SubscriptionRef.modifyEffect(tools, (current) => {
-          const exists = Chunk.findFirst(current, (t) => t.name === tool.name);
-          if (exists._tag === "Some") {
-            return Effect.fail(new DuplicateToolError({ toolName: tool.name }));
-          }
-          return Effect.succeed([undefined as void, Chunk.append(current, tool)] as const);
-        }),
-        () =>
-          SubscriptionRef.update(tools, (current) =>
-            Chunk.filter(current, (t) => t !== tool),
-          ),
-      );
-
     const addAmbient = (source: AmbientProducer): Effect.Effect<void, never, Scope.Scope> =>
       Effect.acquireRelease(
         SubscriptionRef.update(ambients, (current) => Chunk.append(current, source)),
@@ -307,11 +411,6 @@ export const make = (
           SubscriptionRef.update(transforms, (current) =>
             Chunk.filter(current, (t) => t !== transform),
           ),
-      );
-
-    const reportError = (phase: string, err: unknown): Effect.Effect<void> =>
-      SubscriptionRef.update(errors, (current) =>
-        Chunk.append(current, { phase, error: err }),
       );
 
     const invalidate: Effect.Effect<void> = SubscriptionRef.update(
