@@ -11,6 +11,14 @@ import type { Event, Tool, ToolCall, ToolOutcome } from "./types";
 const callIdsKey = (calls: ReadonlyArray<ToolCall>): string =>
   calls.map((c) => c.id).sort().join("|");
 
+export interface RunToolExecutionOptions {
+  // Maximum number of tools that run concurrently within a single tool
+  // batch. Pass `"unbounded"` to opt out of the cap. The model can issue
+  // many simultaneous calls; without a cap, rate-limited backends, the
+  // filesystem, or subprocess-spawning tools can stampede.
+  readonly concurrency: number | "unbounded";
+}
+
 interface RawResult {
   readonly tool_call_id: string;
   readonly content: string;
@@ -49,7 +57,9 @@ const normalizeOutcome = (
 //      See signals/graph.ts:392-399. Halt still prevents further
 //      inference — the inference loop checks halt on entry.
 //   5. Drain pending-sends buffer AFTER results land, UNLESS halted.
-export const runToolExecution = (): Effect.Effect<
+export const runToolExecution = (
+  opts: RunToolExecutionOptions,
+): Effect.Effect<
   Fiber.RuntimeFiber<void, never>,
   never,
   AgentCtx | PendingSends | Scope.Scope
@@ -105,7 +115,14 @@ export const runToolExecution = (): Effect.Effect<
           return { tool_call_id: call.id, content: `Error: ${msg}` };
         }
         return normalizeOutcome(call, outcome.right);
-      });
+      }).pipe(
+        Effect.withSpan("agentctx.tool.run", {
+          attributes: {
+            "agentctx.tool.name": call.function.name,
+            "agentctx.tool.call_id": call.id,
+          },
+        }),
+      );
 
     const step = (calls: ReadonlyArray<ToolCall>): Effect.Effect<void> =>
       Effect.gen(function* () {
@@ -126,7 +143,7 @@ export const runToolExecution = (): Effect.Effect<
 
         const tools = yield* SubscriptionRef.get(ctx.tools);
         const results = yield* Effect.forEach(calls, (c) => runOne(c, tools), {
-          concurrency: "unbounded",
+          concurrency: opts.concurrency,
         });
 
         // Append results unconditionally — see invariant 5. Halt-check
@@ -156,6 +173,9 @@ export const runToolExecution = (): Effect.Effect<
         }));
         yield* ctx.events.appendMany(sendEvents);
       }).pipe(
+        Effect.withSpan("agentctx.tool.batch", {
+          attributes: { "agentctx.tool.batch.size": calls.length },
+        }),
         Effect.catchAllCause((cause) => ctx.reportError("tool_execution", cause)),
       );
 

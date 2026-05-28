@@ -73,10 +73,21 @@ export const runInference = (
           onDelta: (text) => { runFork(ctx.emitTextDelta({ turnId, text })); },
         };
 
+        // Provider model/system aren't visible here — `InferFn` is opaque.
+        // Effect-aware providers should annotate `gen_ai.system` /
+        // `gen_ai.request.model` on the current span themselves.
         const response = yield* Effect.tryPromise({
           try: () => infer(context, opts),
           catch: (cause) => new InferenceError({ cause }),
-        });
+        }).pipe(
+          Effect.withSpan("agentctx.inference.turn", {
+            attributes: {
+              "agentctx.turn_id": turnId,
+              "agentctx.messages.count": context.messages.length,
+              "agentctx.tools.count": context.tools.length,
+            },
+          }),
+        );
 
         // Re-check halt after the async boundary. Without this, a halt
         // extension that fires during `await infer()` would be racing

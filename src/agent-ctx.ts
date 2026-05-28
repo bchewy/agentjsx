@@ -194,6 +194,12 @@ export const make = (
       const currentSources = yield* SubscriptionRef.get(ambients);
       const currentTransforms = yield* SubscriptionRef.get(transforms);
       const currentTools = yield* SubscriptionRef.get(tools);
+      yield* Effect.annotateCurrentSpan({
+        "agentctx.render.events.count": Chunk.size(currentEvents),
+        "agentctx.render.ambients.count": Chunk.size(currentSources),
+        "agentctx.render.transforms.count": Chunk.size(currentTransforms),
+        "agentctx.render.tools.count": Chunk.size(currentTools),
+      });
       const tctx: TransformContext = {
         tools: Chunk.toReadonlyArray(currentTools),
       };
@@ -238,7 +244,7 @@ export const make = (
       // Terminal adapter: Fragment[] → ProviderContext. Owns
       // auto-cache-breakpoint placement and wire-shape invariants.
       return adaptToProviderContext(fragments, tctx, { cacheAmbient });
-    });
+    }).pipe(Effect.withSpan("agentctx.render"));
 
     // Merge the change streams from all inputs that affect fragments. The
     // initial emissions of each SubscriptionRef arrive eagerly so the
@@ -337,6 +343,6 @@ export const make = (
     return service;
   });
 
-export class AgentCtx extends Effect.Service<AgentCtx>()("AgentCtx", {
+export class AgentCtx extends Effect.Service<AgentCtx>()("effectctx/AgentCtx", {
   scoped: (opts: AgentCtxOptions) => make(opts),
 }) {}

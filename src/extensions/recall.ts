@@ -81,6 +81,13 @@ export const recall = (opts: RecallOptions = {}): Extension => {
           }).pipe(Schema.optionalWith({ nullable: true })),
         }),
         run: async (args) => {
+          // Tool.run must return a Promise (see src/types.ts) and
+          // ToolContext does not carry the parent runtime, so reaching
+          // the log from inside a tool body requires runPromise. The
+          // CLAUDE.md rule targets *writes* (append) — those break live
+          // subscriptions when issued from a throwaway runtime. This is
+          // a read-only snapshot of a SubscriptionRef, so the
+          // throwaway-runtime concern is cosmetic, not correctness.
           const events = await Effect.runPromise(ctx.events.snapshot);
           const arr = Chunk.toReadonlyArray(events);
 

@@ -50,6 +50,11 @@ export interface AgentOptions {
   // Pass `null` to disable (e.g. OpenAI-only callers that tolerate
   // empty-content stop turns).
   readonly validate?: ((ctx: ProviderContext) => string | null) | null;
+  // Maximum number of tools that run concurrently within a single tool
+  // batch. The model can issue many simultaneous calls; without a cap,
+  // rate-limited backends, the filesystem, or subprocess-spawning tools
+  // can stampede. Default 8. Pass `"unbounded"` to opt out.
+  readonly toolConcurrency?: number | "unbounded";
 }
 
 // Snapshot view passed into `until` predicates. Plain arrays so
@@ -128,7 +133,7 @@ export const createAgent = (
           ? null
           : opts.validate ?? validateProviderContext,
     });
-    yield* runToolExecution();
+    yield* runToolExecution({ concurrency: opts.toolConcurrency ?? 8 });
 
     return ctx;
   });
