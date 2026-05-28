@@ -149,9 +149,10 @@
   },
   "peerDependencies": {
     "@effect/platform": "^0.96.1",
-    "@effect/platform-bun": "^0.89.0",
     "@effect/platform-browser": "^0.76.0",
-    "@modelcontextprotocol/sdk": "^1.25.1"
+    "@effect/platform-bun": "^0.89.0",
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "just-bash": "^3.0.1"
   },
   "peerDependenciesMeta": {
     "@modelcontextprotocol/sdk": {
@@ -165,6 +166,9 @@
     },
     "@effect/platform-browser": {
       "optional": true
+    },
+    "just-bash": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -175,6 +179,7 @@
     "@modelcontextprotocol/sdk": "^1.25.1",
     "@types/node": "^22.19.17",
     "fast-check": "^4.7.0",
+    "just-bash": "^3.0.1",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
     "zod": "^4.1.13"
