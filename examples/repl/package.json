@@ -6,11 +6,13 @@
   "type": "module",
   "scripts": {
     "start": "tsx cli.tsx",
+    "start:openrouter": "tsx openrouter-cli.tsx",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@effect/platform-node": "^0.106.0",
     "@flamecast/agentjsx": "file:../..",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "effect": "^3.21.1"
   },
   "devDependencies": {

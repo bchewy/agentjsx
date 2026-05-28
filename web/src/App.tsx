@@ -1,5 +1,5 @@
-import { Landing } from "./Landing"
+import { AgentShowcase } from "./AgentShowcase"
 
 export function App() {
-	return <Landing />
+	return <AgentShowcase />
 }

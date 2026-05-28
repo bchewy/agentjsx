@@ -67,6 +67,21 @@ Node and Bun get real `bash` + native filesystem. Browser gets a POSIX-subset ba
 ## Examples
 
 - [`examples/repl/`](examples/repl/): interactive REPL against the agent. Type a message, watch tool calls + replies stream in.
+  - AI Gateway: `AI_GATEWAY_API_KEY=... pnpm start`
+  - OpenRouter: `OPENROUTER_API_KEY=... pnpm start:openrouter`
+  - The OpenRouter example defaults to `openai/gpt-oss-20b:free`; override with `OPENROUTER_MODEL=...`.
+
+## Showcase
+
+The [`web/`](web/) app is an interactive visualization of the AgentJSX loop:
+
+```bash
+cd web
+pnpm install
+pnpm dev
+```
+
+It shows a JSX component tree rendering into provider context, tools, messages, a model call, local tool execution, and event-log state.
 
 ## License
 
