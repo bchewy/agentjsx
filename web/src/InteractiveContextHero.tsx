@@ -11,7 +11,7 @@ import {
 
 const agent = createAgentRuntime({
   infer: createAiGatewayInfer({ model: "anthropic/claude-sonnet-4-6" }),
-  context: ({ events }) => render(
+  context: () => render(
     <Agent>
       <Block name="role">You are a coding assistant.</Block>
       <Workspace root="./" />
@@ -20,7 +20,7 @@ const agent = createAgentRuntime({
       <Errors />
       <GitState />
       <McpServer name="linear" url="https://mcp.smithery.run/linear" />
-      <Messages from={events} />
+      <Messages />
     </Agent>
   ),
 })

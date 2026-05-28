@@ -13,7 +13,7 @@ import { validateProviderContext } from "./validate";
 import { PendingSends } from "./pending-sends";
 import { isHalted, lastResult, pendingToolCallsFromLog, toolsInFlight } from "./projections";
 import { runToolExecution } from "./tool-exec";
-import type { Event, InferFn, ProviderContext, Tool, ToolCall } from "./types";
+import type { Event, InferFn, ProviderContext, Rendered, Tool, ToolCall } from "./types";
 
 // An Extension is a Layer that consumes AgentCtx (for addTool/addAmbient/
 // addTransform) and may also read PendingSends. It contributes nothing
@@ -39,6 +39,16 @@ export interface AgentOptions {
   // from `@flamecast/harness/jsx`) is one way to build one; any pure
   // function is equally valid.
   readonly renderer?: Renderer;
+  // JSX-driven context. When set, each turn the runtime injects the
+  // current event log via render()'s ambient context, calls this
+  // callback, and uses the returned `Rendered`. Tools are reconciled
+  // against the previous turn's tools by name (new → installed in a
+  // sub-scope, removed → released, both → left alone). Fragments
+  // replace the default ambient+history composition for this branch;
+  // user-registered transforms still run on top, so `extensions: [...]`
+  // (transforms only) keeps working alongside `context`. When both
+  // `context` and `renderer` are set, `context` wins.
+  readonly context?: () => Rendered;
   // Render preflight. Invoked just before each inference call with the
   // composed ProviderContext. Returning a string aborts the call: the
   // string is treated as a diagnostic and surfaces as `inference.failed`
@@ -160,6 +170,7 @@ export const createAgentRuntime = (opts: AgentOptions): Agent => {
     initialEvents: opts.initialEvents,
     ...(opts.cacheAmbient !== undefined ? { cacheAmbient: opts.cacheAmbient } : {}),
     ...(opts.renderer ? { renderer: opts.renderer } : {}),
+    ...(opts.context ? { context: opts.context } : {}),
   });
   // Compose: base services (AgentCtx + PendingSends), then the agent
   // fibers/extensions on top. `Layer.provide` flows the base services

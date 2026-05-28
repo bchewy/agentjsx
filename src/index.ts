@@ -48,11 +48,19 @@ export type {
   ProviderContext,
   ProviderMessage,
   ProviderContentChunk,
+  Rendered,
   Tool,
   ToolCall,
   ToolContext,
   ToolDefinition,
 } from "./types";
+// JSX-context API root-level entry. Components live under
+// `effectctx/components` (per the package.json exports map); the
+// `render` function and types are re-exported here so callers using
+// `context: () => render(<Agent>...)` can import everything they need
+// from the package root.
+export { render } from "./jsx";
+export type { RenderContext } from "./jsx";
 export {
   createAiGatewayInfer,
   createOpenRouterInfer,
