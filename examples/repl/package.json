@@ -1,0 +1,20 @@
+{
+  "name": "agentjsx-example-repl",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Interactive REPL against an agentjsx agent.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx cli.tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flamecast/agentjsx": "file:../..",
+    "effect": "^3.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.3"
+  }
+}

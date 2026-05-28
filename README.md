@@ -39,7 +39,7 @@ await agent.send("Fix the highest-priority bug in Linear and open a PR.")
 
 ## Examples
 
-(Coming soon: full runnable examples are being rebuilt under `examples/`.)
+- [`examples/repl/`](examples/repl/): interactive REPL against the agent. Type a message, watch tool calls + replies stream in.
 
 ## License
 
