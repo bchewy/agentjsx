@@ -33,7 +33,7 @@ function CopySnippetCta() {
 
 const LINKS = [
 	{
-		href: "https://github.com/smithery-ai/agentctx",
+		href: "https://github.com/smithery-ai/agentjsx",
 		label: "GitHub",
 		desc: "Source, issues, and the full extension catalog.",
 	},
@@ -43,7 +43,7 @@ const LINKS = [
 		desc: "Install with bun add @flamecast/agentjsx.",
 	},
 	{
-		href: "https://github.com/smithery-ai/agentctx/tree/main/examples",
+		href: "https://github.com/smithery-ai/agentjsx/tree/main/examples",
 		label: "Examples",
 		desc: "Local coding agent and Cloudflare Sandbox variants.",
 	},
@@ -68,7 +68,7 @@ export function Landing() {
 							<CopySnippetCta />
 							<a
 								className="cta-secondary"
-								href="https://github.com/smithery-ai/agentctx"
+								href="https://github.com/smithery-ai/agentjsx"
 							>
 								View on GitHub
 							</a>

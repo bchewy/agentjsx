@@ -7,11 +7,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smithery-ai/agentctx.git"
+    "url": "git+https://github.com/smithery-ai/agentjsx.git"
   },
-  "homepage": "https://github.com/smithery-ai/agentctx",
+  "homepage": "https://github.com/smithery-ai/agentjsx",
   "bugs": {
-    "url": "https://github.com/smithery-ai/agentctx/issues"
+    "url": "https://github.com/smithery-ai/agentjsx/issues"
   },
   "keywords": [
     "agent",
