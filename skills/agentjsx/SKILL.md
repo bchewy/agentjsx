@@ -23,7 +23,7 @@ Three shapes. Pick by what the component contributes:
 
 When you find yourself reaching for a side-effecting hook or hidden context to communicate state *between* components, stop. Re-derive what you need by reading the event log via `useRenderContext().events`, or wrap with a shaper. The architecture refuses cross-component hidden state on purpose.
 
-## The load-bearing files
+## Key files
 
 Read these to ground any non-trivial change:
 
@@ -177,7 +177,7 @@ Stick with a Layer-based extension in `src/extensions/` if:
 
 `references/extensions.md` covers the legacy API.
 
-## Authoring discipline (the load-bearing rules)
+## Authoring discipline
 
 - **Read existing source first.** `src/jsx/components/workspace.tsx` is the canonical real-capability template. `src/jsx/components/todo.tsx` is the event-log-state template. `src/jsx/components/skills.tsx` is the async-cache template. `src/jsx/components/compact.tsx` is the shaper template. Always skim before writing new.
 - **Typecheck often.** The codebase has mapped-exhaustiveness checks on `Event` projections in `src/core/projections.ts` — adding a new event variant will break the compile until both `PROJECTORS` and `EVENT_META` are updated. Embrace the seam.

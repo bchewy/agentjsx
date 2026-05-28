@@ -28,6 +28,11 @@ const agent = createAgentRuntime({
       <Workspace root="./" />
       <Skills root="./skills" />
       <McpServer name="deepwiki" url="https://mcp.deepwiki.com/mcp" />
+      <McpServer
+        name="linear"
+        url="https://mcp.linear.app/mcp"
+        headers={{ Authorization: `Bearer ${process.env.LINEAR_API_KEY}` }}
+      />
       <Todo />
       <Compact strategy="summary" threshold={4000}>
         <Messages />
