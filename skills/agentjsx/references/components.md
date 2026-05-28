@@ -39,7 +39,7 @@ function stringifyChildren(children: Node | Node[] | undefined): string {
 
 ### Notes
 
-- The `source` field is **load-bearing** for shapers. `<Compact strategy="snip">` keeps fragments with `source === "history"` (messages) and passes everything else through unchanged. If you author a new content component, pick a stable `source` string that shapers can pattern-match on.
+- The `source` field is what shapers dispatch on. `<Compact strategy="snip">` keeps fragments with `source === "history"` (messages) and passes everything else through unchanged. If you author a new content component, pick a stable `source` string that shapers can pattern-match on.
 - The `tag` field is `"core/system"` for system blocks. The other current tag is `"core/user-message"` / `"core/assistant-message"` etc. for projected messages — see `src/core/types.ts` for the `FragmentMap` definition.
 - Block content should be a string. If you want to compose nested JSX inside a block, you'll hit the "leaf text only" guard. Either compose strings outside the JSX, or write multiple sibling blocks.
 
