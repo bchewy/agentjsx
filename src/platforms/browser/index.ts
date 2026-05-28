@@ -6,13 +6,18 @@
 // backed), key-value store (localStorage), WebSocket, plus Clipboard /
 // Geolocation / Permissions.
 //
-// agentjsx's `<Workspace>` requires FileSystem + Path + CommandExecutor
-// and will return error strings at tool-call time in browser context
-// unless you bring your own layer (e.g., in-memory FileSystem + no-op
-// CommandExecutor). The other components — `<Block>`, `<Messages>`,
-// `<Compact>`, `<McpServer>` (over HTTP), `<Todo>` — work fine.
+// Two platform shapes are exposed here:
 //
-// Usage:
+//   `partialPlatform` — HttpClient only (fetch-backed). `<Workspace>`
+//   does not work. Use for browser agents that don't need a workspace.
+//
+//   `justBashPlatform()` — wires in Vercel Labs' `just-bash` library,
+//   exposing a virtual filesystem (Effect's FileSystem.FileSystem) and
+//   bash interpreter (Effect's CommandExecutor.CommandExecutor) both
+//   backed by one shared `Bash` instance. `<Workspace>` works fully,
+//   modulo just-bash's "broad bash subset, no system binaries" limit.
+//
+// Usage (partial):
 //
 //   import { createAgentRuntime } from "@flamecast/agentjsx"
 //   import { partialPlatform } from "@flamecast/agentjsx/platforms/browser"
@@ -22,10 +27,18 @@
 //     infer: myFetchBackedInferFn,
 //     context: () => render(
 //       <Agent>
-//         <Block name="role">…</Block>
+//         <Block name="role">...</Block>
 //         <Messages />
 //       </Agent>
 //     ),
+//   })
+//
+// Usage (with workspace, via just-bash):
+//
+//   import { justBashPlatform } from "@flamecast/agentjsx/platforms/browser"
+//   const agent = createAgentRuntime({
+//     platform: justBashPlatform({ files: { "/etc/hello": "world" } }),
+//     ...
 //   })
 
 import { BrowserHttpClient } from "@effect/platform-browser"
@@ -47,3 +60,10 @@ export {
 // (fetch-backed) because most agent setups need it. No FileSystem,
 // no CommandExecutor — bring your own if components need them.
 export const partialPlatform = BrowserHttpClient.layerXMLHttpRequest
+
+export {
+  justBashCommandExecutorLayer,
+  justBashFileSystemLayer,
+  justBashPlatform,
+  type JustBashPlatformOptions,
+} from "./just-bash"
