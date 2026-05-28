@@ -57,9 +57,9 @@ const cache = new Map<string, CacheState>();
 // Derive a one-line description from a markdown file's body. Strategy:
 // scan lines, skip blank lines and lines that look like markdown
 // headings (`#`, `##`, etc.) or horizontal rules. Return the first
-// remaining non-empty line, trimmed. Frontmatter is not parsed in the
-// MVP — fixtures should use a plain first-line description (heading
-// optional). If nothing usable is found, return "(no description)".
+// remaining non-empty line, trimmed. Used as the fallback when no
+// YAML frontmatter is present. If nothing usable is found, returns
+// "(no description)".
 function deriveDescription(body: string): string {
   const lines = body.split(/\r?\n/);
   for (const raw of lines) {
@@ -70,6 +70,53 @@ function deriveDescription(body: string): string {
     return line;
   }
   return "(no description)";
+}
+
+// Parse the YAML frontmatter fields from a raw frontmatter block.
+// Tiny inline parser: one `key: value` per line. Quoted values have
+// their surrounding quotes stripped. No nested structures, no lists.
+// That's all the skill spec needs for `name` and `description`.
+function parseFrontmatterFields(raw: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of raw.split(/\r?\n/)) {
+    const m = /^([a-zA-Z_][\w-]*):\s*(.*)$/.exec(line.trim());
+    if (!m) continue;
+    let value = m[2]!.trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    out[m[1]!] = value;
+  }
+  return out;
+}
+
+// Parse a skill file into its description (one-liner shown in the
+// `<skills>` menu) and body (full markdown the model sees on
+// `skill_lookup`/`skill_invoke`). If the file starts with a YAML
+// frontmatter block (`---\n...\n---\n`), the `description` field
+// supplies the menu line and the body is everything after the closing
+// fence. If no frontmatter is present, falls back to the heuristic:
+// description is the first non-heading, non-blank line; body is the
+// full file. Backwards-compatible with plain-markdown skill files.
+export function parseSkillFile(content: string): {
+  description: string;
+  body: string;
+} {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(content);
+  if (!m) {
+    return { description: deriveDescription(content), body: content };
+  }
+  const frontmatterRaw = m[1]!;
+  const body = m[2] ?? "";
+  const fields = parseFrontmatterFields(frontmatterRaw);
+  const description =
+    fields.description && fields.description.length > 0
+      ? fields.description
+      : deriveDescription(body);
+  return { description, body };
 }
 
 function listSkills(
@@ -86,10 +133,11 @@ function listSkills(
       if (!entry.endsWith(".md")) continue;
       const name = entry.slice(0, -".md".length);
       const full = p.resolve(root, entry);
-      const body = yield* fs
+      const content = yield* fs
         .readFileString(full)
         .pipe(Effect.catchAll(() => Effect.succeed("")));
-      out.push({ name, description: deriveDescription(body) });
+      const { description } = parseSkillFile(content);
+      out.push({ name, description });
     }
     out.sort((a, b) => a.name.localeCompare(b.name));
     return out;
@@ -140,7 +188,12 @@ export function Skills(props: SkillsProps): Node {
       const target = p.resolve(root, `${name}.md`);
       const exists = yield* fs.exists(target);
       if (!exists) return `Skill not found: ${name}`;
-      return yield* fs.readFileString(target);
+      const content = yield* fs.readFileString(target);
+      // Strip frontmatter from the returned body so the LLM doesn't
+      // see YAML cruft. Plain-markdown files (no frontmatter) pass
+      // through unchanged via the fallback in parseSkillFile.
+      const { body } = parseSkillFile(content);
+      return body;
     }).pipe(
       Effect.catchAll((e) =>
         Effect.succeed(
