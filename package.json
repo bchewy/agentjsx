@@ -7,11 +7,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smithery-ai/effectctx.git"
+    "url": "git+https://github.com/smithery-ai/agentctx.git"
   },
-  "homepage": "https://github.com/smithery-ai/effectctx",
+  "homepage": "https://github.com/smithery-ai/agentctx",
   "bugs": {
-    "url": "https://github.com/smithery-ai/effectctx/issues"
+    "url": "https://github.com/smithery-ai/agentctx/issues"
   },
   "keywords": [
     "effect",

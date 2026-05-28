@@ -1,147 +1,63 @@
-# EffectCtx
+# agentctx
 
-EffectCtx lets you build agent harnesses by composing steering extensions that shape what your model sees and does.
+Compose your agent's context like a React tree.
 
-Built on [Effect](https://effect.website), inspired by React: just as the DOM is rendered from state, an agent's context is *rendered* from an append-only event log.
+```tsx
+import { createAgentRuntime, createAiGatewayInfer, render } from "@flamecast/agentctx"
+import {
+  Agent, Block, Messages,
+  Workspace, Skills, McpServer,
+  Todo, Errors, GitState,
+} from "@flamecast/agentctx/components"
+
+const agent = createAgentRuntime({
+  infer: createAiGatewayInfer({ model: "anthropic/claude-sonnet-4-6" }),
+  context: ({ events }) => render(
+    <Agent>
+      <Block name="role">You are a coding assistant.</Block>
+      <Workspace root="./" />
+      <Skills root="./skills" />
+      <Todo />
+      <Errors />
+      <GitState />
+      <McpServer name="linear" url="https://mcp.smithery.run/linear" />
+      <Messages from={events} />
+    </Agent>
+  ),
+})
+
+await agent.send("Fix the highest-priority bug in Linear and open a PR.")
+```
+
+That's the whole pitch.
+
+## Why components
+
+LLM context is a view. It changes every turn: messages land, the workspace shifts, todos tick off, errors surface and resolve. React-the-DOM is the closest analog, and after a decade we know how to compose views.
+
+Each component declares what should be true for the next turn:
+
+- **Capability components** like `<Workspace>` install tools and contribute their own system block.
+- **Block components** like `<Block>` and `<Messages>` are pure prompt content you author.
+- **Reactive components** like `<Todo>`, `<Errors>`, `<GitState>` track session state that changes mid-run.
+
+The runtime walks the tree on every turn, diffs against the previous render, and applies the changes. JSX declares, Effect runs.
 
 ## Install
 
 ```bash
-bun add effectctx
+bun add @flamecast/agentctx
 # or
-npm install effectctx
+npm install @flamecast/agentctx
 ```
 
-## Quickstart
-
-A local coding agent with sandboxed file system + shell access and recall over its own log:
-
-```ts
-import { createAgent, createAiGatewayInfer } from "effectctx";
-import { recall } from "effectctx/extensions";
-import { localWorkspace } from "effectctx/node";
-
-const agent = createAgent({
-  infer: createAiGatewayInfer({ model: "anthropic/claude-sonnet-4-6" }),
-  extensions: [
-    localWorkspace({ root: "/tmp/agent" }),
-    recall(),
-  ],
-});
-
-await agent.send("find every TODO in this repo and group them by file");
-```
-
-`localWorkspace` is the Node-flavored shorthand for the `workspace` extension. It lives in `effectctx/node` because it pulls in `node:fs/promises` and `node:child_process`. The core `effectctx` package stays platform-agnostic, so the same agent runs unchanged on Cloudflare Workers (with Sandbox-backed adapters) or any other V8 runtime. See [`examples/cloudflare-sandbox/`](examples/cloudflare-sandbox/) for the Workers version.
-
-## From events to context
-
-Every agent has one source of truth: an append-only log of events. The model never sees that log directly. It sees a context that's rendered from the log on every turn.
-
-```
-world
-  │  user types, tools run, agent replies
-  ▼
-events  (append-only log)
-  │  project each event into a fragment
-  ▼
-fragments  (one per event)
-  │  steering extensions reshape the array
-  ▼
-fragments  (after extensions)
-  │  render into the final shape the model sees
-  ▼
-context  (system + messages + tools)
-```
-
-## Steering extensions
-
-A steering extension is a small piece of logic that shapes what the model sees and does. The quickstart above composes two:
-
-- `localWorkspace`: shell + file system rooted at one directory. Gives the model `bash`, `read_file`, `write_file`, `list_dir`, `grep`, plus a live tree ambient. (Wraps the underlying `workspace` extension with Node host adapters.)
-- `recall`: registers a tool the model can call to fetch older log entries that were compacted or truncated.
-
-Drop in more as you need them: `compact` and `summarize` for context compaction, `truncateToolOutputs` to clip oversized tool results, `mcpServers` to mount remote tools, `subagents` to let the agent spawn helpers, `maxSteps` to cap inference loops. See [docs/architecture.md](docs/architecture.md) for the full catalog.
-
-Each one lives in [src/extensions/](src/extensions/) and is usable on its own. Reorder the array, swap one out, or delete a line, and the agent keeps working with one fewer behavior.
-
-## Writing your own steering extension
-
-The built-in extensions use the same primitive you do. Here's one that enforces a rule: block edits to a file until the model has read it. A common safety rule in coding agents.
-
-```ts
-import { Effect, Layer, Schema } from "effect";
-import { readFile, writeFile } from "node:fs/promises";
-import { AgentCtx, defineTool, type Extension } from "effectctx";
-
-// A custom steering extension: provides `read` and `edit` tools.
-// `edit` refuses to write to a file until `read` has seen it.
-export const readBeforeEdit = (): Extension =>
-  Layer.scopedDiscard(
-    Effect.gen(function* () {
-      const ctx = yield* AgentCtx;
-      const seen = new Set<string>();
-
-      yield* ctx.addTool(
-        defineTool({
-          name: "read",
-          description: "Read a file's contents.",
-          parameters: Schema.Struct({ path: Schema.String }),
-          run: async ({ path }) => {
-            seen.add(path);
-            return await readFile(path, "utf8");
-          },
-        }),
-      );
-
-      yield* ctx.addTool(
-        defineTool({
-          name: "edit",
-          description: "Edit a file. The file must be read first.",
-          parameters: Schema.Struct({
-            path: Schema.String,
-            contents: Schema.String,
-          }),
-          run: async ({ path, contents }) => {
-            if (!seen.has(path)) {
-              return `Refusing to edit ${path}: read it first so you know what's there.`;
-            }
-            await writeFile(path, contents);
-            return `Wrote ${contents.length} chars to ${path}.`;
-          },
-        }),
-      );
-    }),
-  );
-```
-
-Drop it into your agent the same way:
-
-```ts
-extensions: [
-  localWorkspace({ root: "/tmp/agent" }),
-  readBeforeEdit(),
-],
-```
-
-The rule lives in the extension, not the prompt. Delete the line, the rule disappears.
+Built on [Effect](https://effect.website). Runs on Node, Cloudflare Workers, or any V8 runtime.
 
 ## Examples
 
-Two complete, runnable examples:
-
-- [`examples/coding-agent/`](examples/coding-agent/): ~80 lines, a local Node CLI that gives the agent shell + file system access on the host. Best place to read first.
-- [`examples/cloudflare-sandbox/`](examples/cloudflare-sandbox/): the same agent embedded in a Cloudflare Worker, with shell + file system backed by a [Cloudflare Sandbox](https://developers.cloudflare.com/sandbox/) for real isolation.
-
-## Docs
-
-- [Architecture](docs/architecture.md): philosophy, primitives, the full extension catalog.
-- [Extensions](docs/extensions.md): mental model, progressive shapes, writing your own.
-- [Cookbook](docs/cookbook.md): worked recipes for common patterns.
-- [Hydration](docs/hydration.md): replaying logs, restoring agents across restarts.
-- [API reference](docs/api.md): every export and type.
-- [Skill](docs/skill.md): condensed quickstart for models writing effectctx code.
+- [`examples/coding-agent/`](examples/coding-agent/) — local Node CLI with shell + file system access
+- [`examples/cloudflare-sandbox/`](examples/cloudflare-sandbox/) — the same agent inside a Cloudflare Sandbox
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT.
